@@ -1,0 +1,20 @@
+.{
+    .name = .mcu_sdk,
+    .version = "0.0.0",
+    .fingerprint = 0xd6773f9eba3224e4,
+    .minimum_zig_version = "0.15.2",
+    .dependencies = .{
+        .ondatra = .{
+            .url = "git+https://github.com/igorsaux/ondatra?ref=jit#b111c4e60b15a9791733af23447d9d2bb615f155",
+            .hash = "ondatra-0.16.0-dNNKzQ7sDwBMwr-AbxZ3crjKSVIEDyjZhoohur4CyEUM",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        // For example...
+        //"LICENSE",
+        //"README.md",
+    },
+}
