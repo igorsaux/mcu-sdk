@@ -207,10 +207,6 @@ const Shell = struct {
 
         if (std.mem.eql(u8, cmd, "help")) {
             this.cmdHelp();
-        } else if (std.mem.eql(u8, cmd, "freq")) {
-            this.cmdFreq(args);
-        } else if (std.mem.eql(u8, cmd, "code")) {
-            this.cmdCode(args);
         } else if (std.mem.eql(u8, cmd, "set")) {
             this.cmdSet(args);
         } else if (std.mem.eql(u8, cmd, "send")) {
@@ -228,8 +224,6 @@ const Shell = struct {
         this.print("\n");
         this.printBox("Sub-GHz Commands", C.orange);
         this.print("\n");
-        this.print(C.borange ++ "  > " ++ C.bwhite ++ "freq " ++ C.gray ++ "<n>      " ++ C.dim ++ "Set frequency\n" ++ C.reset);
-        this.print(C.borange ++ "  > " ++ C.bwhite ++ "code " ++ C.gray ++ "<n>      " ++ C.dim ++ "Set code\n" ++ C.reset);
         this.print(C.borange ++ "  > " ++ C.bwhite ++ "set " ++ C.gray ++ "<f> <c>   " ++ C.dim ++ "Set freq & code\n" ++ C.reset);
         this.print(C.borange ++ "  > " ++ C.bwhite ++ "send" ++ C.gray ++ "          " ++ C.dim ++ "Transmit signal\n" ++ C.reset);
         this.print(C.borange ++ "  > " ++ C.bwhite ++ "status" ++ C.gray ++ "        " ++ C.dim ++ "Current config\n" ++ C.reset);
@@ -238,51 +232,15 @@ const Shell = struct {
         this.printFmt(C.gray ++ "  freq: {}-{}  code: {}-{}" ++ C.reset ++ "\n\n", .{ MIN_FREQ, MAX_FREQ, MIN_CODE, MAX_CODE });
     }
 
-    fn cmdFreq(this: *Shell, args: []const u8) void {
-        if (args.len == 0) {
-            this.printFmt(C.bred ++ "  [!] " ++ C.reset ++ "Specify frequency ({}-{})\n", .{ MIN_FREQ, MAX_FREQ });
-
-            return;
-        }
-
-        const val = parseU16(args);
-
-        if (val < MIN_FREQ or val > MAX_FREQ) {
-            this.printFmt(C.bred ++ "  [!] " ++ C.reset ++ "Range: {}-{}\n", .{ MIN_FREQ, MAX_FREQ });
-
-            return;
-        }
-
-        this.cur_freq = val;
-        this.print(C.bgreen ++ "  [+] " ++ C.reset ++ "Freq " ++ C.orange ++ "= " ++ C.bold ++ C.borange);
-        this.printNumber(val);
-        this.print(C.reset ++ "\n");
-    }
-
-    fn cmdCode(this: *Shell, args: []const u8) void {
-        if (args.len == 0) {
-            this.printFmt(C.bred ++ "  [!] " ++ C.reset ++ "Specify code ({}-{})\n", .{ MIN_CODE, MAX_CODE });
-
-            return;
-        }
-
-        const val = parseU16(args);
-
-        if (val < MIN_CODE or val > MAX_CODE) {
-            this.printFmt(C.bred ++ "  [!] " ++ C.reset ++ "Range: {}-{}\n", .{ MIN_CODE, MAX_CODE });
-
-            return;
-        }
-
-        this.cur_code = @truncate(val);
-        this.print(C.bgreen ++ "  [+] " ++ C.reset ++ "Code " ++ C.orange ++ "= " ++ C.bold ++ C.borange);
-        this.printNumber(val);
-        this.print(C.reset ++ "\n");
-    }
-
     fn cmdSet(this: *Shell, args: []const u8) void {
         if (args.len == 0) {
             this.print(C.bred ++ "  [!] " ++ C.reset ++ "Usage: set <freq> <code>\n");
+
+            return;
+        }
+
+        if (!this.signaler.mmio().ready()) {
+            this.print(C.byellow ++ "  [~] " ++ C.reset ++ C.dim ++ "Cooldown, wait..." ++ C.reset ++ "\n");
 
             return;
         }
@@ -319,6 +277,7 @@ const Shell = struct {
 
         this.cur_freq = freq;
         this.cur_code = @truncate(code);
+        this.signaler.mmio().set(this.cur_freq, this.cur_code);
 
         this.print(C.bgreen ++ "  [+] " ++ C.reset ++ "Freq " ++ C.orange ++ "= " ++ C.bold ++ C.borange);
         this.printNumber(freq);
@@ -340,7 +299,6 @@ const Shell = struct {
             return;
         }
 
-        this.signaler.mmio().set(this.cur_freq, this.cur_code);
         this.signaler.mmio().send();
         this.send_count += 1;
 
