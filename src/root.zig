@@ -260,6 +260,7 @@ pub const Pci = extern struct {
         signaler = 3,
         gps = 4,
         light = 5,
+        env_sensor = 6,
         _,
     };
 
@@ -653,5 +654,100 @@ pub const Light = extern struct {
         this.config().color = color;
         this.config().brightness = brightness;
         this.action().set = 1;
+    }
+};
+
+pub const EnvSensor = extern struct {
+    pub const Event = extern struct {
+        pub const Type = enum(u8) {
+            none = 0,
+            ready = 1,
+        };
+
+        ty: Type = .none,
+    };
+
+    pub const Interrupts = extern struct {
+        on_ready: bool = false,
+    };
+
+    pub const Rays = extern struct {
+        alpha: bool = false,
+        beta: bool = false,
+        hawking: bool = false,
+    };
+
+    pub const Config = extern struct {
+        interrupts: Interrupts = .{},
+        rays: Rays = .{},
+    };
+
+    pub const Atmos = extern struct {
+        total_moles: u32 = 0,
+        /// Pa
+        pressure: u32 = 0,
+        /// K
+        temperature: u16 = 0,
+        /// Moles
+        oxygen: u16 = 0,
+        /// Moles
+        nitrogen: u16 = 0,
+        /// Moles
+        carbon_dioxide: u16 = 0,
+        /// Moles
+        hydrogen: u16 = 0,
+        /// Moles
+        plasma: u16 = 0,
+    };
+
+    pub const Radiation = extern struct {
+        /// Ci
+        avg_activity: u32 = 0,
+        /// eV
+        avg_energy: u32 = 0,
+        /// mGy
+        dose: u16 = 0,
+    };
+
+    pub const Status = extern struct {
+        atmos: Atmos = .{},
+        radiation: Radiation = .{},
+        ready: bool = false,
+        last_event: Event = .{},
+    };
+
+    pub const Action = extern struct {
+        update: u8 = 0,
+        ack: u8 = 0,
+    };
+
+    _config: Config = .{},
+    _status: Status = .{},
+    _action: Action = .{},
+
+    pub inline fn config(this: *volatile EnvSensor) *volatile Config {
+        return &this._config;
+    }
+
+    pub inline fn status(this: *volatile EnvSensor) *volatile Status {
+        return &this._status;
+    }
+
+    pub inline fn action(this: *volatile EnvSensor) *volatile Action {
+        return &this._action;
+    }
+
+    pub inline fn lastEvent(this: *volatile EnvSensor) ?Event {
+        const event = this.status().last_event;
+
+        return if (event.ty == .none) null else event;
+    }
+
+    pub inline fn ready(this: *volatile EnvSensor) bool {
+        return this.status().ready;
+    }
+
+    pub inline fn ack(this: *volatile EnvSensor) void {
+        this.action().ack = 1;
     }
 };
