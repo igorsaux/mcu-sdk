@@ -12,7 +12,7 @@ pub fn main() void {
     sdk.arch.Mie.setMtie();
 
     while (true) {
-        if (tts.mmio().isReady()) {
+        if (tts.mmio().ready()) {
             var msg: [sdk.Tts.BUFFER_SIZE]u8 = undefined;
             var writer: std.Io.Writer = .fixed(&msg);
 

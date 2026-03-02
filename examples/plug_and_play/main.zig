@@ -39,7 +39,7 @@ pub fn main() void {
 
     while (true) {
         const tts = getTts();
-        tts.mmio().config().interrupt_when_ready = true;
+        tts.mmio().interrupts().on_ready = true;
 
         sdk.dma.memset(tts.slot, 0, 0, sdk.Tts.BUFFER_SIZE);
         sdk.dma.write(tts.slot, 0, "Hello, world!");
@@ -65,7 +65,7 @@ pub fn main() void {
                 }
             }
 
-            if (tts.mmio().isReady()) {
+            if (tts.mmio().ready()) {
                 tts.mmio().say();
             }
 

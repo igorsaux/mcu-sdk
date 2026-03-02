@@ -248,6 +248,7 @@ pub const Pci = extern struct {
         serial_terminal = 2,
         signaler = 3,
         gps = 4,
+        light = 5,
         _,
     };
 
@@ -336,8 +337,12 @@ pub const pci: *volatile Pci = @ptrFromInt(Memory.PCI);
 pub const Tts = extern struct {
     pub const BUFFER_SIZE: usize = 128;
 
+    pub const Interrupts = extern struct {
+        on_ready: bool = false,
+    };
+
     pub const Config = extern struct {
-        interrupt_when_ready: bool = false,
+        interrupts: Interrupts = .{},
     };
 
     pub const Event = extern struct {
@@ -350,7 +355,7 @@ pub const Tts = extern struct {
     };
 
     pub const Status = extern struct {
-        is_ready: bool = false,
+        ready: bool = false,
         last_event: Event = .{},
     };
 
@@ -367,6 +372,10 @@ pub const Tts = extern struct {
         return &this._config;
     }
 
+    pub inline fn interrupts(this: *volatile Tts) *volatile Interrupts {
+        return &this.config().interrupts;
+    }
+
     pub inline fn status(this: *volatile Tts) *volatile Status {
         return &this._status;
     }
@@ -375,8 +384,8 @@ pub const Tts = extern struct {
         return &this._action;
     }
 
-    pub inline fn isReady(this: *volatile Tts) bool {
-        return this.status().is_ready;
+    pub inline fn ready(this: *volatile Tts) bool {
+        return this.status().ready;
     }
 
     pub inline fn lastEvent(this: *volatile Tts) ?Event {
@@ -556,5 +565,82 @@ pub const Gps = extern struct {
 
     pub inline fn status(this: *volatile Gps) *volatile Status {
         return &this._status;
+    }
+};
+
+pub const Light = extern struct {
+    pub const Rgb = extern struct {
+        r: u8 = 0,
+        g: u8 = 0,
+        b: u8 = 0,
+    };
+
+    pub const Interrupts = extern struct {
+        on_ready: bool = false,
+    };
+
+    pub const Config = extern struct {
+        interrupts: Interrupts = .{},
+        color: Rgb = .{},
+        brightness: u8 = 0,
+    };
+
+    pub const Event = extern struct {
+        pub const Type = enum(u8) {
+            none = 0,
+            ready = 1,
+        };
+
+        ty: Type = .none,
+    };
+
+    pub const Status = extern struct {
+        ready: bool = false,
+        last_event: Event = .{},
+    };
+
+    pub const Action = extern struct {
+        set: u8 = 0,
+        ack: u8 = 0,
+    };
+
+    _config: Config = .{},
+    _status: Status = .{},
+    _action: Action = .{},
+
+    pub inline fn config(this: *volatile Light) *volatile Config {
+        return &this._config;
+    }
+
+    pub inline fn interrupts(this: *volatile Light) *volatile Interrupts {
+        return &this._config.interrupts;
+    }
+
+    pub inline fn status(this: *volatile Light) *volatile Status {
+        return &this._status;
+    }
+
+    pub inline fn action(this: *volatile Light) *volatile Action {
+        return &this._action;
+    }
+
+    pub inline fn lastEvent(this: *volatile Light) ?Event {
+        const event = this.status().last_event;
+
+        return if (event.ty == .none) null else event;
+    }
+
+    pub inline fn ready(this: *volatile Light) bool {
+        return this.status().ready;
+    }
+
+    pub inline fn ack(this: *volatile Light) void {
+        this.action().ack = 1;
+    }
+
+    pub inline fn set(this: *volatile Light, color: Rgb, brightness: u8) void {
+        this.config().color = color;
+        this.config().brightness = brightness;
+        this.action().set = 1;
     }
 };

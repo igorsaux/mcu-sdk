@@ -10,7 +10,7 @@ pub fn main() void {
     const gps = Gps.find() orelse return;
 
     sdk.arch.Mie.setMeie();
-    tts.mmio().config().interrupt_when_ready = true;
+    tts.mmio().interrupts().on_ready = true;
 
     while (true) {
         sdk.dma.memset(tts.slot, 0, 0, sdk.Tts.BUFFER_SIZE);
@@ -28,7 +28,7 @@ pub fn main() void {
             if (event.ty == .ready) {
                 tts.mmio().say();
             }
-        } else if (tts.mmio().isReady()) {
+        } else if (tts.mmio().ready()) {
             tts.mmio().say();
         }
 
