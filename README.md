@@ -1,1 +1,1 @@
-# ic2-sdk
+# mcu-sdk
