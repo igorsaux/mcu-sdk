@@ -74,6 +74,89 @@ pub const Power = extern struct {
 
 pub const power: *volatile Power = @ptrFromInt(Memory.POWER);
 
+pub const Rtc = extern struct {
+    pub const Interrupts = extern struct {
+        on_interval: bool = false,
+    };
+
+    pub const Unit = enum(u8) {
+        seconds = 0,
+        minutes = 1,
+        hours = 2,
+    };
+
+    pub const Config = extern struct {
+        interval: u32 = 0,
+        unit: Unit = .seconds,
+        interrupts: Interrupts = .{},
+    };
+
+    pub const Event = extern struct {
+        pub const Type = enum(u8) {
+            none = 0,
+            interval = 1,
+        };
+
+        ty: Type = .none,
+    };
+
+    pub const Status = extern struct {
+        prev_interval_at: u64 = 0,
+        timestamp: u64 = 0,
+        shift_id: u32 = 0,
+        last_event: Event = .{},
+    };
+
+    pub const Action = extern struct {
+        ack: u8 = 0,
+    };
+
+    _config: Config = .{},
+    _status: Status = .{},
+    _action: Action = .{},
+
+    pub inline fn config(this: *volatile Rtc) *volatile Config {
+        return &this._config;
+    }
+
+    pub inline fn status(this: *volatile Rtc) *volatile Status {
+        return &this._status;
+    }
+
+    pub inline fn action(this: *volatile Rtc) *volatile Action {
+        return &this._action;
+    }
+
+    pub inline fn timestamp(this: *volatile Rtc) u64 {
+        return this.status().timestamp;
+    }
+
+    pub inline fn shiftId(this: *volatile Rtc) u32 {
+        return this.status().shift_id;
+    }
+
+    pub inline fn every(this: *volatile Rtc, interval: u32, unit: Unit) void {
+        this.config().unit = unit;
+        this.config().interval = interval;
+    }
+
+    pub inline fn interrupts(this: *volatile Rtc) *volatile Interrupts {
+        return &this.config().interrupts;
+    }
+
+    pub inline fn lastEvent(this: *volatile Rtc) ?Event {
+        const event = this.status().last_event;
+
+        return if (event.ty == .none) null else event;
+    }
+
+    pub inline fn ack(this: *volatile Rtc) void {
+        this.action().ack = 1;
+    }
+};
+
+pub const rtc: *volatile Rtc = @ptrFromInt(Memory.RTC);
+
 pub const Clint = extern struct {
     pub const Interrupts = extern struct {
         on_sync_pulse: bool = false,

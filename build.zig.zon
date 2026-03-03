@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.15.2",
     .dependencies = .{
         .ondatra = .{
-            .url = "git+https://github.com/igorsaux/ondatra?ref=jit#b111c4e60b15a9791733af23447d9d2bb615f155",
-            .hash = "ondatra-0.16.0-dNNKzQ7sDwBMwr-AbxZ3crjKSVIEDyjZhoohur4CyEUM",
+            .url = "git+https://github.com/igorsaux/ondatra#120257a8062deaad52059c55891983ae40ecbd2e",
+            .hash = "ondatra-0.16.0-dNNKzdskCAAvfDx2Mci5T3Fdi-gWLybzgSgvTr_QIN8X",
         },
     },
     .paths = .{

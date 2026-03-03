@@ -389,3 +389,270 @@ pub fn PciDevice(comptime T: type, comptime ty: sdk.Pci.DeviceType) type {
         }
     };
 }
+
+pub const DateTime = struct {
+    pub const EPOCH_YEAR: u32 = 1970;
+    const DAYS_IN_MONTH = [12]u8{ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+    pub const Components = struct {
+        year: u32,
+        month: u8, // 1-12
+        day: u8, // 1-31
+        hour: u8, // 0-23
+        minute: u8, // 0-59
+        second: u8, // 0-59
+
+        pub inline fn now() Components {
+            return fromTimestamp(timestamp());
+        }
+
+        pub inline fn toTimestamp(this: Components) u64 {
+            return DateTime.compose(this);
+        }
+
+        pub inline fn fromTimestamp(ts: u64) Components {
+            return DateTime.decompose(ts);
+        }
+
+        pub inline fn addSeconds(this: Components, delta: i64) Components {
+            const current = this.toTimestamp();
+
+            if (delta >= 0) {
+                return fromTimestamp(current +| @as(u64, @intCast(delta)));
+            } else {
+                const abs: u64 = @intCast(-delta);
+
+                return fromTimestamp(current -| abs);
+            }
+        }
+
+        pub inline fn addMinutes(this: Components, delta: i64) Components {
+            return this.addSeconds(delta * std.time.s_per_min);
+        }
+
+        pub inline fn addHours(this: Components, delta: i64) Components {
+            return this.addSeconds(delta * std.time.s_per_hour);
+        }
+
+        pub inline fn addDays(this: Components, delta: i64) Components {
+            return this.addSeconds(delta * std.time.s_per_day);
+        }
+
+        pub inline fn addMonths(this: Components, delta: i32) Components {
+            const current_abs_months: i64 = @as(i64, this.year) * 12 + (this.month - 1);
+            const new_abs_months: i64 = current_abs_months + delta;
+
+            const epoch_abs_months: i64 = @as(i64, DateTime.EPOCH_YEAR) * 12;
+
+            if (new_abs_months < epoch_abs_months) {
+                return .{
+                    .year = DateTime.EPOCH_YEAR,
+                    .month = 1,
+                    .day = 1,
+                    .hour = 0,
+                    .minute = 0,
+                    .second = 0,
+                };
+            }
+
+            const new_year: u32 = @intCast(@divFloor(new_abs_months, 12));
+            const new_month: u8 = @intCast(@mod(new_abs_months, 12) + 1);
+            const max_day = DateTime.daysInMonth(new_year, new_month);
+
+            return .{
+                .year = new_year,
+                .month = new_month,
+                .day = @min(this.day, max_day),
+                .hour = this.hour,
+                .minute = this.minute,
+                .second = this.second,
+            };
+        }
+
+        pub inline fn addYears(this: Components, delta: i32) Components {
+            const new_year: i64 = @as(i64, this.year) + delta;
+
+            if (new_year < DateTime.EPOCH_YEAR) {
+                return .{
+                    .year = DateTime.EPOCH_YEAR,
+                    .month = 1,
+                    .day = 1,
+                    .hour = 0,
+                    .minute = 0,
+                    .second = 0,
+                };
+            }
+
+            const year: u32 = @intCast(new_year);
+            const max_day = DateTime.daysInMonth(year, this.month);
+
+            return .{
+                .year = year,
+                .month = this.month,
+                .day = @min(this.day, max_day),
+                .hour = this.hour,
+                .minute = this.minute,
+                .second = this.second,
+            };
+        }
+
+        pub inline fn compare(this: Components, other: Components) std.math.Order {
+            if (this.year != other.year) {
+                return std.math.order(this.year, other.year);
+            }
+
+            if (this.month != other.month) {
+                return std.math.order(this.month, other.month);
+            }
+
+            if (this.day != other.day) {
+                return std.math.order(this.day, other.day);
+            }
+
+            if (this.hour != other.hour) {
+                return std.math.order(this.hour, other.hour);
+            }
+
+            if (this.minute != other.minute) {
+                if (this.minute != other.minute) return std.math.order(this.minute, other.minute);
+                return std.math.order(this.minute, other.minute);
+            }
+
+            return std.math.order(this.second, other.second);
+        }
+
+        pub inline fn eq(this: Components, other: Components) bool {
+            return this.compare(other) == .eq;
+        }
+
+        pub inline fn diffSeconds(this: Components, other: Components) i64 {
+            const self_ts: i64 = @intCast(this.toTimestamp());
+            const other_ts: i64 = @intCast(other.toTimestamp());
+
+            return self_ts - other_ts;
+        }
+
+        pub inline fn diffDays(this: Components, other: Components) i64 {
+            return @divFloor(this.diffSeconds(other), std.time.s_per_day);
+        }
+    };
+
+    pub inline fn now() Components {
+        return decompose(timestamp());
+    }
+
+    pub inline fn timestamp() u64 {
+        return sdk.rtc.status().timestamp;
+    }
+
+    pub inline fn isLeapYear(year: u32) bool {
+        return (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0);
+    }
+
+    pub inline fn daysInYear(year: u32) u32 {
+        return if (isLeapYear(year)) 366 else 365;
+    }
+
+    pub inline fn daysInMonth(year: u32, month: u8) u32 {
+        if (month == 2 and isLeapYear(year)) {
+            return 29;
+        }
+
+        return DAYS_IN_MONTH[month - 1];
+    }
+
+    pub inline fn dayOfWeek(ts: u64) u8 {
+        const days = ts / std.time.s_per_day;
+
+        return @intCast((days + 3) % 7);
+    }
+
+    pub inline fn dayOfWeekFromComponents(c: Components) u8 {
+        return dayOfWeek(compose(c));
+    }
+
+    pub fn decompose(ts: u64) Components {
+        var remaining = ts;
+
+        var year: u32 = EPOCH_YEAR;
+        while (true) {
+            const seconds_in_year = @as(u64, daysInYear(year)) * std.time.s_per_day;
+            if (remaining < seconds_in_year) break;
+            remaining -= seconds_in_year;
+            year += 1;
+        }
+
+        var day_of_year = remaining / std.time.s_per_day;
+        remaining = remaining % std.time.s_per_day;
+
+        var month: u8 = 1;
+        while (month <= 12) {
+            const days = daysInMonth(year, month);
+            if (day_of_year < days) break;
+            day_of_year -= days;
+            month += 1;
+        }
+
+        const hour: u8 = @intCast(remaining / std.time.s_per_hour);
+        remaining = remaining % std.time.s_per_hour;
+
+        const minute: u8 = @intCast(remaining / std.time.s_per_min);
+        const second: u8 = @intCast(remaining % std.time.s_per_min);
+
+        return .{
+            .year = year,
+            .month = month,
+            .day = @as(u8, @intCast(day_of_year)) + 1,
+            .hour = hour,
+            .minute = minute,
+            .second = second,
+        };
+    }
+
+    pub inline fn compose(c: Components) u64 {
+        var total: u64 = 0;
+
+        var y: u32 = EPOCH_YEAR;
+        while (y < c.year) : (y += 1) {
+            total += @as(u64, daysInYear(y)) * std.time.s_per_day;
+        }
+
+        var m: u8 = 1;
+        while (m < c.month) : (m += 1) {
+            total += @as(u64, daysInMonth(c.year, m)) * std.time.s_per_day;
+        }
+
+        total += @as(u64, c.day - 1) * std.time.s_per_day;
+        total += @as(u64, c.hour) * std.time.s_per_hour;
+        total += @as(u64, c.minute) * std.time.s_per_min;
+        total += c.second;
+
+        return total;
+    }
+
+    /// YYYY-MM-DDTHH:MM:SS
+    pub inline fn format(ts: u64, writer: *std.Io.Writer) !void {
+        const c = decompose(ts);
+
+        try writer.print(
+            "{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}",
+            .{ c.year, c.month, c.day, c.hour, c.minute, c.second },
+        );
+    }
+
+    /// YYYY-MM-DD
+    pub inline fn formatDate(ts: u64, writer: *std.Io.Writer) !void {
+        const c = decompose(ts);
+        try writer.print("{d:0>4}-{d:0>2}-{d:0>2}", .{ c.year, c.month, c.day });
+    }
+
+    /// HH:MM:SS
+    pub inline fn formatTime(ts: u64, writer: *std.Io.Writer) !void {
+        const c = decompose(ts);
+        try writer.print("{d:0>2}:{d:0>2}:{d:0>2}", .{ c.hour, c.minute, c.second });
+    }
+
+    pub inline fn formatNow(writer: *std.Io.Writer) !void {
+        try format(timestamp(), writer);
+    }
+};
