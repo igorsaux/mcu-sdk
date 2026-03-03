@@ -13,24 +13,25 @@ pub fn main() void {
 
     while (true) {
         if (tts.mmio().ready()) {
-            var msg: [sdk.Tts.BUFFER_SIZE]u8 = undefined;
-            var writer: std.Io.Writer = .fixed(&msg);
+            sdk.dma.memset(tts.slot, 0, 0, sdk.Tts.BUFFER_SIZE);
+
+            var buffer: [sdk.Tts.BUFFER_SIZE]u8 = undefined;
+            var writer: sdk.utils.DmaWriter = .init(tts.slot, sdk.Tts.BUFFER_SIZE, 0, &buffer);
 
             const sensors = sdk.sensors.*;
 
-            writer.print("Sensors: {}C {}mWh", .{ sensors.temperature, sensors.power_usage }) catch unreachable;
+            writer.interface.print("Sensors: {}C", .{sensors.temperature}) catch unreachable;
 
             if (sensors.flags.throttled) {
-                writer.print(", throttled", .{}) catch unreachable;
+                writer.interface.print(", throttled", .{}) catch unreachable;
             }
 
             if (sensors.flags.overheat) {
-                writer.print(", warning: overheat!", .{}) catch unreachable;
+                writer.interface.print(", warning: overheat!", .{}) catch unreachable;
             }
 
-            writer.writeByte(0) catch unreachable;
+            writer.interface.flush() catch unreachable;
 
-            sdk.dma.write(tts.slot, 0, msg[0..writer.end]);
             tts.mmio().say();
         }
 

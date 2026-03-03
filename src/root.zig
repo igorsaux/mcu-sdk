@@ -61,8 +61,6 @@ pub const Sensors = extern struct {
 
     /// C
     temperature: i16 = 0,
-    /// mWh
-    power_usage: u16 = 0,
     flags: Flags = .{},
 };
 

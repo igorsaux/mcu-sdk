@@ -10,20 +10,21 @@ pub fn main() void {
     sdk.arch.Mie.setMeie();
     sdk.clint.interrupts().on_sync_pulse = true;
 
-    var charge = sdk.power.battery_charge;
+    var charge: i32 = @intCast(sdk.power.battery_charge);
 
     while (true) {
         if (sdk.clint.lastEvent()) |event| {
             sdk.clint.ack();
 
             if (event.ty == .sync and tts.mmio().ready()) {
-                const now_charge = sdk.power.battery_charge;
-                const charge_delta = now_charge -| charge;
+                const now_charge: i32 = @intCast(sdk.power.battery_charge);
+                const charge_delta: i32 = now_charge -| charge;
 
                 sdk.dma.memset(tts.slot, 0, 0, sdk.Tts.BUFFER_SIZE);
 
                 var buffer: [sdk.Tts.BUFFER_SIZE]u8 = undefined;
                 var writer: sdk.utils.DmaWriter = .init(tts.slot, sdk.Tts.BUFFER_SIZE, 0, &buffer);
+
                 writer.interface.print("Dlt: {}mWh, Rem: {}mWh", .{ charge_delta, now_charge }) catch unreachable;
                 writer.interface.flush() catch unreachable;
 
