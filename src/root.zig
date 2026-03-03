@@ -74,6 +74,8 @@ pub const Power = extern struct {
     has_external_source: bool = false,
 };
 
+pub const power: *volatile Power = @ptrFromInt(Memory.POWER);
+
 pub const Clint = extern struct {
     pub const Interrupts = extern struct {
         on_sync_pulse: bool = false,
