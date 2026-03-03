@@ -499,7 +499,26 @@ pub const Tts = extern struct {
         on_ready: bool = false,
     };
 
+    pub const Language = enum(u8) {
+        galcom = 0,
+        eal = 1,
+        sol_common = 2,
+        unathi = 3,
+        siik_mass = 4,
+        skrellian = 5,
+        local_rootspeak = 6,
+        global_rootspeak = 7,
+        lunar = 8,
+        gutter = 9,
+        indepented = 10,
+        spacer = 11,
+        robot = 12,
+        drone = 13,
+        _,
+    };
+
     pub const Config = extern struct {
+        language: Language = .galcom,
         interrupts: Interrupts = .{},
     };
 
