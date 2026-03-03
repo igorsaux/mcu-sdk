@@ -70,15 +70,57 @@ pub const Power = extern struct {
 };
 
 pub const Clint = extern struct {
-    pub const Config = extern struct {
-        mtime: u64,
-        mtimecmp: u64,
+    pub const Interrupts = extern struct {
+        sync_pulse: bool = false,
     };
 
-    _config: Config,
+    pub const Config = extern struct {
+        mtime: u64 = 0,
+        mtimecmp: u64 = 0,
+        interrupts: Interrupts = .{},
+    };
+
+    pub const Event = extern struct {
+        pub const Type = enum(u8) {
+            none = 0,
+            sync = 1,
+        };
+
+        ty: Type = .none,
+    };
+
+    pub const Status = extern struct {
+        last_event: Event = .{},
+    };
+
+    pub const Action = extern struct {
+        ack: u8 = 0,
+    };
+
+    _config: Config = .{},
+    _status: Status = .{},
+    _action: Action = .{},
 
     pub inline fn config(this: *volatile Clint) *volatile Config {
         return &this._config;
+    }
+
+    pub inline fn status(this: *volatile Clint) *volatile Status {
+        return &this._status;
+    }
+
+    pub inline fn action(this: *volatile Clint) *volatile Action {
+        return &this._action;
+    }
+
+    pub inline fn interrupts(this: *volatile Clint) *volatile Interrupts {
+        return &this.config().interrupts;
+    }
+
+    pub inline fn lastEvent(this: *volatile Clint) ?Event {
+        const event = this.status().last_event;
+
+        return if (event.ty == .none) null else event;
     }
 
     pub inline fn readMtime(this: *volatile Clint) u64 {
@@ -141,6 +183,10 @@ pub const Clint = extern struct {
         const ticks = utils.nsToTicks(ns);
 
         this.interruptAt(ticks);
+    }
+
+    pub inline fn ack(this: *volatile Clint) void {
+        this.action().ack = 1;
     }
 };
 
