@@ -21,6 +21,11 @@ pub const Memory = struct {
         std.debug.assert(POWER >= SENSORS + @sizeOf(Sensors));
     }
 
+    pub const RTC = 0x0000_4000;
+    comptime {
+        std.debug.assert(RTC >= POWER + @sizeOf(Power));
+    }
+
     pub const CLINT = 0x0200_0000;
 
     pub const PRNG = 0x0C00_2000;
@@ -71,7 +76,7 @@ pub const Power = extern struct {
 
 pub const Clint = extern struct {
     pub const Interrupts = extern struct {
-        sync_pulse: bool = false,
+        on_sync_pulse: bool = false,
     };
 
     pub const Config = extern struct {
@@ -329,8 +334,8 @@ pub const Pci = extern struct {
     };
 
     pub const Interrupts = extern struct {
-        disconnected: bool = false,
-        connected: bool = false,
+        on_disconnected: bool = false,
+        on_connected: bool = false,
     };
 
     pub const Config = extern struct {

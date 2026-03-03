@@ -8,7 +8,7 @@ pub fn main() void {
     const tts = Tts.find() orelse return;
 
     sdk.arch.Mie.setMeie();
-    sdk.clint.interrupts().sync_pulse = true;
+    sdk.clint.interrupts().on_sync_pulse = true;
 
     sdk.dma.memset(tts.slot, 0, 0, sdk.Tts.BUFFER_SIZE);
     sdk.dma.write(tts.slot, 0, "Sync pulse");

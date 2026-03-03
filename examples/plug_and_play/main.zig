@@ -6,7 +6,7 @@ const Tts = sdk.utils.PciDevice(sdk.Tts, .tts);
 
 inline fn getTts() Tts {
     sdk.pci.interrupts().* = .{
-        .connected = true,
+        .on_connected = true,
     };
 
     defer sdk.pci.interrupts().* = .{};
@@ -45,7 +45,7 @@ pub fn main() void {
         sdk.dma.write(tts.slot, 0, "Hello, world!");
 
         sdk.pci.interrupts().* = .{
-            .disconnected = true,
+            .on_disconnected = true,
         };
 
         print_loop: while (true) {
