@@ -9,22 +9,42 @@ pub fn main() void {
 
     sdk.arch.Mie.setMeie();
     sdk.rtc.every(13, .seconds);
+    sdk.rtc.setAlarm(sdk.utils.DateTime.now().addMinutes(1).toTimestamp());
     sdk.rtc.interrupts().on_interval = true;
+    sdk.rtc.interrupts().on_alarm = true;
 
     while (true) {
         if (sdk.rtc.lastEvent()) |event| {
             sdk.rtc.ack();
 
-            if (event.ty == .interval and tts.mmio().ready()) {
-                sdk.dma.memset(tts.slot, 0, 0, sdk.Tts.BUFFER_SIZE);
+            if (tts.mmio().ready()) {
+                switch (event.ty) {
+                    .interval => {
+                        sdk.dma.memset(tts.slot, 0, 0, sdk.Tts.BUFFER_SIZE);
 
-                var buffer: [sdk.Tts.BUFFER_SIZE]u8 = undefined;
-                var writer: sdk.utils.DmaWriter = .init(tts.slot, sdk.Tts.BUFFER_SIZE, 0, &buffer);
+                        var buffer: [sdk.Tts.BUFFER_SIZE]u8 = undefined;
+                        var writer: sdk.utils.DmaWriter = .init(tts.slot, sdk.Tts.BUFFER_SIZE, 0, &buffer);
 
-                sdk.utils.DateTime.formatNow(&writer.interface) catch unreachable;
-                writer.interface.flush() catch unreachable;
+                        sdk.utils.DateTime.formatNow(&writer.interface) catch unreachable;
+                        writer.interface.flush() catch unreachable;
 
-                tts.mmio().say();
+                        tts.mmio().say();
+                    },
+                    .alarm => {
+                        sdk.dma.memset(tts.slot, 0, 0, sdk.Tts.BUFFER_SIZE);
+
+                        var buffer: [sdk.Tts.BUFFER_SIZE]u8 = undefined;
+                        var writer: sdk.utils.DmaWriter = .init(tts.slot, sdk.Tts.BUFFER_SIZE, 0, &buffer);
+
+                        writer.interface.print("Alarm!!!", .{}) catch unreachable;
+                        writer.interface.flush() catch unreachable;
+
+                        tts.mmio().say();
+
+                        sdk.rtc.setAlarm(sdk.utils.DateTime.now().addMinutes(1).toTimestamp());
+                    },
+                    else => {},
+                }
             }
         }
 

@@ -77,6 +77,7 @@ pub const power: *volatile Power = @ptrFromInt(Memory.POWER);
 pub const Rtc = extern struct {
     pub const Interrupts = extern struct {
         on_interval: bool = false,
+        on_alarm: bool = false,
     };
 
     pub const Unit = enum(u8) {
@@ -87,6 +88,7 @@ pub const Rtc = extern struct {
     };
 
     pub const Config = extern struct {
+        alarm: u64 = 0,
         interval: u32 = 0,
         unit: Unit = .seconds,
         interrupts: Interrupts = .{},
@@ -96,6 +98,7 @@ pub const Rtc = extern struct {
         pub const Type = enum(u8) {
             none = 0,
             interval = 1,
+            alarm = 2,
             _,
         };
 
@@ -135,6 +138,10 @@ pub const Rtc = extern struct {
 
     pub inline fn shiftId(this: *volatile Rtc) u32 {
         return this.status().shift_id;
+    }
+
+    pub inline fn setAlarm(this: *volatile Rtc, value: u64) void {
+        this.config().alarm = value;
     }
 
     pub inline fn every(this: *volatile Rtc, interval: u32, unit: Unit) void {
