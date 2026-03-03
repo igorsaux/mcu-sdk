@@ -83,6 +83,7 @@ pub const Rtc = extern struct {
         seconds = 0,
         minutes = 1,
         hours = 2,
+        _,
     };
 
     pub const Config = extern struct {
@@ -95,6 +96,7 @@ pub const Rtc = extern struct {
         pub const Type = enum(u8) {
             none = 0,
             interval = 1,
+            _,
         };
 
         ty: Type = .none,
@@ -172,6 +174,7 @@ pub const Clint = extern struct {
         pub const Type = enum(u8) {
             none = 0,
             sync = 1,
+            _,
         };
 
         ty: Type = .none,
@@ -315,6 +318,7 @@ pub const Dma = struct {
         read = 0,
         write = 1,
         fill = 2,
+        _,
     };
 
     pub const Config = extern struct {
@@ -409,6 +413,7 @@ pub const Pci = extern struct {
             none = 0,
             connected = 1,
             disconnected = 2,
+            _,
         };
 
         ty: Ty = .none,
@@ -495,6 +500,7 @@ pub const Tts = extern struct {
         pub const Type = enum(u8) {
             none = 0,
             ready = 1,
+            _,
         };
 
         ty: Type = .none,
@@ -557,6 +563,7 @@ pub const SerialTerminal = extern struct {
         pub const Type = enum(u8) {
             none = 0,
             new_data = 1,
+            _,
         };
 
         ty: Type = .none,
@@ -625,6 +632,7 @@ pub const Signaler = extern struct {
             none = 0,
             pulse = 1,
             ready = 2,
+            _,
         };
 
         ty: Type = .none,
@@ -735,6 +743,7 @@ pub const Light = extern struct {
         pub const Type = enum(u8) {
             none = 0,
             ready = 1,
+            _,
         };
 
         ty: Type = .none,
@@ -796,6 +805,7 @@ pub const EnvSensor = extern struct {
         pub const Type = enum(u8) {
             none = 0,
             ready = 1,
+            _,
         };
 
         ty: Type = .none,
