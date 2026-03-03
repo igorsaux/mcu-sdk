@@ -33,6 +33,7 @@ pub fn build(b: *std.Build) void {
     addGuestExecutable(b, sdk, "examples/sync", "sync");
     addGuestExecutable(b, sdk, "examples/power", "power");
     addGuestExecutable(b, sdk, "examples/rtc", "rtc");
+    addGuestExecutable(b, sdk, "examples/wordle", "wordle");
 }
 
 const riscv32Query: std.Target.Query = .{
