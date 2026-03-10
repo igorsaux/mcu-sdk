@@ -29,8 +29,9 @@ pub const Memory = struct {
     pub const CLINT = 0x0200_0000;
 
     pub const PRNG = 0x0C00_2000;
-
-    pub const UART = 0x1000_0000;
+    comptime {
+        std.debug.assert(PRNG >= CLINT + @sizeOf(Clint));
+    }
 
     pub const DMA = 0x1000_1000;
 
@@ -601,6 +602,7 @@ pub const SerialTerminal = extern struct {
 
     pub const Config = extern struct {
         interrupts: Interrupts = .{},
+        raw_mode: u8 = 0,
     };
 
     pub const Status = extern struct {
@@ -649,6 +651,14 @@ pub const SerialTerminal = extern struct {
 
     pub inline fn ack(this: *volatile SerialTerminal) void {
         this.action().ack = 1;
+    }
+
+    pub inline fn setRawMode(this: *volatile SerialTerminal, enabled: bool) void {
+        this.config().raw_mode = if (enabled) 1 else 0;
+    }
+
+    pub inline fn isRawMode(this: *volatile SerialTerminal) bool {
+        return this.config().raw_mode != 0;
     }
 };
 
