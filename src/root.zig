@@ -8,6 +8,12 @@ pub const arch = ondatra.guest;
 
 pub const utils = @import("utils.zig");
 
+pub const Rgb = extern struct {
+    r: u8 = 0,
+    g: u8 = 0,
+    b: u8 = 0,
+};
+
 pub const Memory = struct {
     pub const BOOT_INFO = 0x0000_1000;
 
@@ -407,6 +413,7 @@ pub const Pci = extern struct {
         gps = 4,
         light = 5,
         env_sensor = 6,
+        vga = 7,
         _,
     };
 
@@ -759,12 +766,6 @@ pub const Gps = extern struct {
 };
 
 pub const Light = extern struct {
-    pub const Rgb = extern struct {
-        r: u8 = 0,
-        g: u8 = 0,
-        b: u8 = 0,
-    };
-
     pub const Interrupts = extern struct {
         on_ready: bool = false,
     };
@@ -929,5 +930,653 @@ pub const EnvSensor = extern struct {
 
     pub inline fn ack(this: *volatile EnvSensor) void {
         this.action().ack = 1;
+    }
+};
+
+pub const Vga = extern struct {
+    pub const KeyState = bool;
+
+    pub const Pixel = u8;
+
+    pub const KEYBOARD_LEN: usize = Scancode.KEYS;
+    pub const KEYBOARD_SIZE: usize = KEYBOARD_LEN * @sizeOf(KeyState);
+
+    pub const PAL_LEN: usize = 256;
+    pub const PAL_SIZE: usize = PAL_LEN * @sizeOf(Rgb);
+
+    pub const KEYBOARD_ADDRESS: usize = 0x0;
+    comptime {
+        std.debug.assert(KEYBOARD_ADDRESS == 0x0);
+    }
+
+    pub const PAL_ADDRESS: usize = std.mem.Alignment.of(Rgb).forward(KEYBOARD_ADDRESS + KEYBOARD_SIZE);
+    comptime {
+        std.debug.assert(PAL_ADDRESS == 0x6A);
+    }
+
+    pub const FB_ADDRESS: usize = std.mem.Alignment.of(u8).forward(PAL_ADDRESS + PAL_SIZE);
+    comptime {
+        std.debug.assert(FB_ADDRESS == 0x36A);
+    }
+
+    pub const Interrupts = extern struct {
+        on_vblank: bool = false,
+    };
+
+    pub const KeyboardInterrupts = extern struct {
+        on_key_press: bool = false,
+        on_key_release: bool = false,
+    };
+
+    pub const MouseInterrupts = extern struct {
+        on_move: bool = false,
+        on_button_press: bool = false,
+        on_button_release: bool = false,
+        on_scroll: bool = false,
+    };
+
+    pub const BlitterConfig = extern struct {
+        pub const Cmd = enum(u8) {
+            none = 0,
+            clear = 1,
+            rect = 2,
+            circle = 3,
+            copy = 4,
+            _,
+        };
+
+        pub const Args = extern union {
+            pub const Mode = enum(u8) {
+                crop,
+                wrap,
+            };
+
+            pub const Origin = enum(u8) {
+                top_left,
+                top,
+                top_right,
+                right,
+                bottom_right,
+                bottom,
+                bottom_left,
+                left,
+                center,
+            };
+
+            pub const Position = extern struct {
+                x: u16 = 0,
+                y: u16 = 0,
+            };
+
+            pub const Clear = extern struct {
+                color: u8 = 0,
+            };
+
+            pub const Rect = extern struct {
+                color: u8 = 0,
+                pos: Position = .{},
+                w: u16 = 0,
+                h: u16 = 0,
+                origin: Origin = .top_left,
+                mode: Mode = .crop,
+            };
+
+            pub const Circle = extern struct {
+                color: u8 = 0,
+                pos: Position = .{},
+                r: u16 = 0,
+                origin: Origin = .top_left,
+                mode: Mode = .crop,
+            };
+
+            pub const Copy = extern struct {
+                /// Address of the source pixels.
+                src: u32,
+                w: u16 = 0,
+                h: u16 = 0,
+                src_pos: Position = .{},
+                dst_pos: Position = .{},
+                mode: Mode = .crop,
+            };
+
+            clear: Clear,
+            rect: Rect,
+            circle: Circle,
+            copy: Copy,
+        };
+
+        cmd: Cmd = .none,
+        args: Args = .{ .clear = .{ .color = 0 } },
+    };
+
+    pub const Resolution = enum(u8) {
+        lo = 0,
+        hi = 1,
+        _,
+
+        pub inline fn width(this: Resolution) u16 {
+            return switch (this) {
+                .lo => return 320,
+                .hi => return 640,
+                else => return 0,
+            };
+        }
+
+        pub inline fn height(this: Resolution) u16 {
+            return switch (this) {
+                .lo => return 240,
+                .hi => return 480,
+                else => return 0,
+            };
+        }
+
+        pub inline fn len(this: Resolution) usize {
+            return @as(usize, this.width()) * @as(usize, this.height());
+        }
+
+        pub inline fn size(this: Resolution) usize {
+            return this.len() * @sizeOf(Pixel);
+        }
+
+        pub inline fn fps(this: Resolution) u8 {
+            return switch (this) {
+                .lo => return 24,
+                .hi => return 15,
+                else => return 0,
+            };
+        }
+    };
+
+    pub const Config = extern struct {
+        interrupts: Interrupts = .{},
+        keyboard_interrupts: KeyboardInterrupts = .{},
+        mouse_interrupts: MouseInterrupts = .{},
+        blitter: BlitterConfig = .{},
+        resolution: Resolution = .lo,
+    };
+
+    pub const Event = extern struct {
+        pub const Type = enum(u8) {
+            none = 0,
+            vblank = 1,
+            _,
+        };
+
+        ty: Type = .none,
+    };
+
+    pub const Scancode = enum(u8) {
+        pub const KEYS = @typeInfo(Scancode).@"enum".fields.len - 1;
+
+        none = 0x00,
+
+        a = 0x04,
+        b = 0x05,
+        c = 0x06,
+        d = 0x07,
+        e = 0x08,
+        f = 0x09,
+        g = 0x0A,
+        h = 0x0B,
+        i = 0x0C,
+        j = 0x0D,
+        k = 0x0E,
+        l = 0x0F,
+        m = 0x10,
+        n = 0x11,
+        o = 0x12,
+        p = 0x13,
+        q = 0x14,
+        r = 0x15,
+        s = 0x16,
+        t = 0x17,
+        u = 0x18,
+        v = 0x19,
+        w = 0x1A,
+        x = 0x1B,
+        y = 0x1C,
+        z = 0x1D,
+
+        @"1" = 0x1E,
+        @"2" = 0x1F,
+        @"3" = 0x20,
+        @"4" = 0x21,
+        @"5" = 0x22,
+        @"6" = 0x23,
+        @"7" = 0x24,
+        @"8" = 0x25,
+        @"9" = 0x26,
+        @"0" = 0x27,
+
+        enter = 0x28,
+        escape = 0x29,
+        backspace = 0x2A,
+        tab = 0x2B,
+        space = 0x2C,
+
+        minus = 0x2D,
+        equals = 0x2E,
+        left_bracket = 0x2F,
+        right_bracket = 0x30,
+        backslash = 0x31,
+        semicolon = 0x33,
+        apostrophe = 0x34,
+        grave = 0x35,
+        comma = 0x36,
+        period = 0x37,
+        slash = 0x38,
+
+        caps_lock = 0x39,
+        scroll_lock = 0x47,
+        num_lock = 0x53,
+
+        f1 = 0x3A,
+        f2 = 0x3B,
+        f3 = 0x3C,
+        f4 = 0x3D,
+        f5 = 0x3E,
+        f6 = 0x3F,
+        f7 = 0x40,
+        f8 = 0x41,
+        f9 = 0x42,
+        f10 = 0x43,
+        f11 = 0x44,
+        f12 = 0x45,
+
+        print_screen = 0x46,
+        pause = 0x48,
+        insert = 0x49,
+        home = 0x4A,
+        page_up = 0x4B,
+        delete = 0x4C,
+        end = 0x4D,
+        page_down = 0x4E,
+
+        right = 0x4F,
+        left = 0x50,
+        down = 0x51,
+        up = 0x52,
+
+        kp_divide = 0x54,
+        kp_multiply = 0x55,
+        kp_minus = 0x56,
+        kp_plus = 0x57,
+        kp_enter = 0x58,
+        kp_1 = 0x59,
+        kp_2 = 0x5A,
+        kp_3 = 0x5B,
+        kp_4 = 0x5C,
+        kp_5 = 0x5D,
+        kp_6 = 0x5E,
+        kp_7 = 0x5F,
+        kp_8 = 0x60,
+        kp_9 = 0x61,
+        kp_0 = 0x62,
+        kp_period = 0x63,
+
+        left_ctrl = 0xE0,
+        left_shift = 0xE1,
+        left_alt = 0xE2,
+        left_meta = 0xE3,
+        right_ctrl = 0xE4,
+        right_shift = 0xE5,
+        right_alt = 0xE6,
+        right_meta = 0xE7,
+
+        mute = 0x7F,
+        volume_up = 0x80,
+        volume_down = 0x81,
+
+        _,
+
+        pub inline fn isModifier(this: Scancode) bool {
+            return @intFromEnum(this) >= 0xE0 and @intFromEnum(this) <= 0xE7;
+        }
+
+        pub inline fn isNumpad(this: Scancode) bool {
+            return @intFromEnum(this) >= 0x54 and @intFromEnum(this) <= 0x63;
+        }
+
+        const to_idx_table: [256]u8 = blk: {
+            var table: [256]u8 = [_]u8{0xFF} ** 256;
+            var idx: u8 = 0;
+
+            const scancodes = [_]u8{
+                0x04,
+                0x05,
+                0x06,
+                0x07,
+                0x08,
+                0x09,
+                0x0A,
+                0x0B,
+                0x0C,
+                0x0D,
+                0x0E,
+                0x0F,
+                0x10,
+                0x11,
+                0x12,
+                0x13,
+                0x14,
+                0x15,
+                0x16,
+                0x17,
+                0x18,
+                0x19,
+                0x1A,
+                0x1B,
+                0x1C,
+                0x1D,
+                0x1E,
+                0x1F,
+                0x20,
+                0x21,
+                0x22,
+                0x23,
+                0x24,
+                0x25,
+                0x26,
+                0x27,
+                0x28,
+                0x29,
+                0x2A,
+                0x2B,
+                0x2C,
+                0x2D,
+                0x2E,
+                0x2F,
+                0x30,
+                0x31,
+                0x33,
+                0x34,
+                0x35,
+                0x36,
+                0x37,
+                0x38,
+                0x39,
+                0x3A,
+                0x3B,
+                0x3C,
+                0x3D,
+                0x3E,
+                0x3F,
+                0x40,
+                0x41,
+                0x42,
+                0x43,
+                0x44,
+                0x45,
+                0x46,
+                0x47,
+                0x48,
+                0x49,
+                0x4A,
+                0x4B,
+                0x4C,
+                0x4D,
+                0x4E,
+                0x4F,
+                0x50,
+                0x51,
+                0x52,
+                0x53,
+                0x54,
+                0x55,
+                0x56,
+                0x57,
+                0x58,
+                0x59,
+                0x5A,
+                0x5B,
+                0x5C,
+                0x5D,
+                0x5E,
+                0x5F,
+                0x60,
+                0x61,
+                0x62,
+                0x63,
+                0x7F,
+                0x80,
+                0x81,
+                0xE0,
+                0xE1,
+                0xE2,
+                0xE3,
+                0xE4,
+                0xE5,
+                0xE6,
+                0xE7,
+            };
+
+            for (scancodes) |sc| {
+                table[sc] = idx;
+                idx += 1;
+            }
+
+            std.debug.assert(idx == KEYS);
+
+            break :blk table;
+        };
+
+        pub inline fn toIdx(this: Scancode) usize {
+            std.debug.assert(this != .none);
+
+            const raw = @intFromEnum(this);
+            const idx = to_idx_table[raw];
+
+            if (idx == 0xFF) {
+                return KEYS;
+            } else {
+                return idx;
+            }
+        }
+
+        pub inline fn fromIdx(idx: usize) ?Scancode {
+            if (idx >= KEYS) {
+                return null;
+            }
+
+            return from_idx_table[idx];
+        }
+
+        const from_idx_table: [KEYS]Scancode = blk: {
+            var table: [KEYS]Scancode = undefined;
+
+            for (0..256) |sc| {
+                const idx = to_idx_table[sc];
+
+                if (idx != 0xFF) {
+                    table[idx] = @enumFromInt(sc);
+                }
+            }
+
+            break :blk table;
+        };
+    };
+
+    pub const Modifiers = packed struct(u8) {
+        shift: bool = false,
+        ctrl: bool = false,
+        alt: bool = false,
+        meta: bool = false,
+        caps_lock: bool = false,
+        num_lock: bool = false,
+        _pad: u2 = 0,
+    };
+
+    pub const KeyboardEvent = extern struct {
+        pub const MAX_EVENTS = 16;
+
+        pub const Type = enum(u8) {
+            none = 0,
+            press = 1,
+            release = 2,
+            _,
+        };
+
+        ty: Type = .none,
+        scancode: Scancode = .none,
+        modifiers: Modifiers = .{},
+    };
+
+    pub const MouseButton = enum(u8) {
+        none = 0,
+        left = 1,
+        right = 2,
+        middle = 3,
+        _,
+    };
+
+    pub const MouseEvent = extern struct {
+        pub const MAX_EVENTS = 32;
+
+        pub const Type = enum(u8) {
+            none = 0,
+            press = 1,
+            release = 2,
+            move = 3,
+            scroll = 4,
+            _,
+        };
+
+        ty: Type = .none,
+        button: MouseButton = .none,
+        dx: i16 = 0,
+        dy: i16 = 0,
+        scroll_dx: i16 = 0,
+        scroll_dy: i16 = 0,
+    };
+
+    pub const MouseState = packed struct(u8) {
+        left: bool = false,
+        right: bool = false,
+        middle: bool = false,
+        _pad: u5 = 0,
+    };
+
+    pub const Status = extern struct {
+        last_event: Event = .{},
+        head_keyboard_event: KeyboardEvent = .{},
+        head_mouse_event: MouseEvent = .{},
+        mouse_state: MouseState = .{},
+    };
+
+    pub const Action = extern struct {
+        ack: u8 = 0,
+        keyboard_ack: u8 = 0,
+        mouse_ack: u8 = 0,
+        execute_blitter: u8 = 0,
+    };
+
+    _config: Config = .{},
+    _status: Status = .{},
+    _action: Action = .{},
+
+    pub inline fn config(this: *volatile Vga) *volatile Config {
+        return &this._config;
+    }
+
+    pub inline fn interrupts(this: *volatile Vga) *volatile Interrupts {
+        return &this._config.interrupts;
+    }
+
+    pub inline fn keyboardInterrupts(this: *volatile Vga) *volatile KeyboardInterrupts {
+        return &this._config.keyboard_interrupts;
+    }
+
+    pub inline fn mouseInterrupts(this: *volatile Vga) *volatile MouseInterrupts {
+        return &this._config.mouse_interrupts;
+    }
+
+    pub inline fn blitter(this: *volatile Vga) *volatile BlitterConfig {
+        return &this._config.blitter;
+    }
+
+    pub inline fn getResolution(this: *volatile Vga) Resolution {
+        return this.config().resolution;
+    }
+
+    pub inline fn setResolution(this: *volatile Vga, new_res: Resolution) void {
+        this.config().resolution = new_res;
+    }
+
+    pub inline fn status(this: *volatile Vga) *volatile Status {
+        return &this._status;
+    }
+
+    pub inline fn lastEvent(this: *volatile Vga) ?Event {
+        const event = this.status().last_event;
+
+        return if (event.ty == .none) null else event;
+    }
+
+    pub inline fn headKeyboardEvent(this: *volatile Vga) ?KeyboardEvent {
+        const event = this.status().head_keyboard_event;
+
+        return if (event.ty == .none) null else event;
+    }
+
+    pub inline fn headMouseEvent(this: *volatile Vga) ?MouseEvent {
+        const event = this.status().head_mouse_event;
+
+        return if (event.ty == .none) null else event;
+    }
+
+    pub inline fn mouseState(this: *volatile Vga) *volatile MouseState {
+        return &this.status().mouse_state;
+    }
+
+    pub inline fn action(this: *volatile Vga) *volatile Action {
+        return &this._action;
+    }
+
+    pub inline fn ack(this: *volatile Vga) void {
+        this.action().ack = 1;
+    }
+
+    pub inline fn keyboardAck(this: *volatile Vga) void {
+        this.action().keyboard_ack = 1;
+    }
+
+    pub inline fn mouseAck(this: *volatile Vga) void {
+        this.action().mouse_ack = 1;
+    }
+
+    pub inline fn executeBlitter(this: *volatile Vga) void {
+        this.action().execute_blitter = 1;
+    }
+
+    pub inline fn clear(this: *volatile Vga, args: BlitterConfig.Args.Clear) void {
+        this.blitter().* = .{
+            .cmd = .clear,
+            .args = .{ .clear = args },
+        };
+        this.executeBlitter();
+    }
+
+    pub inline fn rect(this: *volatile Vga, args: BlitterConfig.Args.Rect) void {
+        this.blitter().* = .{
+            .cmd = .rect,
+            .args = .{ .rect = args },
+        };
+        this.executeBlitter();
+    }
+
+    pub inline fn circle(this: *volatile Vga, args: BlitterConfig.Args.Circle) void {
+        this.blitter().* = .{
+            .cmd = .circle,
+            .args = .{ .circle = args },
+        };
+        this.executeBlitter();
+    }
+
+    pub inline fn copy(this: *volatile Vga, args: BlitterConfig.Args.Copy) void {
+        this.blitter().* = .{
+            .cmd = .copy,
+            .args = .{ .copy = args },
+        };
+        this.executeBlitter();
     }
 };

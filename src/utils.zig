@@ -656,3 +656,50 @@ pub const DateTime = struct {
         try format(timestamp(), writer);
     }
 };
+
+pub const DEFAULT_VGA_PALETTE: [sdk.Vga.PAL_LEN]sdk.Rgb = blk: {
+    var pal: [sdk.Vga.PAL_LEN]sdk.Rgb = undefined;
+
+    const std16 = [16]sdk.Rgb{
+        .{ .r = 0, .g = 0, .b = 0 },
+        .{ .r = 128, .g = 0, .b = 0 },
+        .{ .r = 0, .g = 128, .b = 0 },
+        .{ .r = 128, .g = 128, .b = 0 },
+        .{ .r = 0, .g = 0, .b = 128 },
+        .{ .r = 128, .g = 0, .b = 128 },
+        .{ .r = 0, .g = 128, .b = 128 },
+        .{ .r = 192, .g = 192, .b = 192 },
+        .{ .r = 128, .g = 128, .b = 128 },
+        .{ .r = 255, .g = 0, .b = 0 },
+        .{ .r = 0, .g = 255, .b = 0 },
+        .{ .r = 255, .g = 255, .b = 0 },
+        .{ .r = 0, .g = 0, .b = 255 },
+        .{ .r = 255, .g = 0, .b = 255 },
+        .{ .r = 0, .g = 255, .b = 255 },
+        .{ .r = 255, .g = 255, .b = 255 },
+    };
+
+    for (0..16) |i| {
+        pal[i] = std16[i];
+    }
+
+    // 16–231: 6×6×6 color cube
+    const levels = [_]u8{ 0, 51, 102, 153, 204, 255 };
+    var idx: usize = 16;
+
+    for (levels) |r| {
+        for (levels) |g| {
+            for (levels) |b| {
+                pal[idx] = .{ .r = r, .g = g, .b = b };
+                idx += 1;
+            }
+        }
+    }
+
+    for (0..24) |j| {
+        const v: u8 = @intCast(8 + j * 10);
+        pal[232 + j] = .{ .r = v, .g = v, .b = v };
+    }
+
+    break :blk pal;
+};
