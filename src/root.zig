@@ -26,12 +26,12 @@ pub const Memory = struct {
         std.debug.assert(RTC >= POWER + @sizeOf(Power));
     }
 
-    pub const CLINT = 0x0200_0000;
-
-    pub const PRNG = 0x0C00_2000;
+    pub const PRNG = 0x0000_5000;
     comptime {
-        std.debug.assert(PRNG >= CLINT + @sizeOf(Clint));
+        std.debug.assert(PRNG >= RTC + @sizeOf(Rtc));
     }
+
+    pub const CLINT = 0x0200_0000;
 
     pub const DMA = 0x1000_1000;
 
@@ -167,6 +167,36 @@ pub const Rtc = extern struct {
 
 pub const rtc: *volatile Rtc = @ptrFromInt(Memory.RTC);
 
+pub const Prng = extern struct {
+    pub const Status = extern struct {
+        /// Returns a random byte
+        value: u8 = 0,
+    };
+
+    _status: Status = .{},
+
+    pub inline fn status(this: *volatile Prng) *volatile Status {
+        return &this._status;
+    }
+
+    fn fill(ptr: *anyopaque, buf: []u8) void {
+        _ = ptr;
+
+        for (0..buf.len) |i| {
+            buf[i] = prng.status().value;
+        }
+    }
+
+    pub inline fn interface() std.Random {
+        return .{
+            .ptr = undefined,
+            .fillFn = fill,
+        };
+    }
+};
+
+pub const prng: *volatile Prng = @ptrFromInt(Memory.PRNG);
+
 pub const Clint = extern struct {
     pub const Interrupts = extern struct {
         on_sync_pulse: bool = false,
@@ -290,36 +320,6 @@ pub const Clint = extern struct {
 };
 
 pub const clint: *volatile Clint = @ptrFromInt(Memory.CLINT);
-
-pub const Prng = extern struct {
-    pub const Status = extern struct {
-        /// Returns a random byte
-        value: u8 = 0,
-    };
-
-    _status: Status = .{},
-
-    pub inline fn status(this: *volatile Prng) *volatile Status {
-        return &this._status;
-    }
-
-    fn fill(ptr: *anyopaque, buf: []u8) void {
-        _ = ptr;
-
-        for (0..buf.len) |i| {
-            buf[i] = prng.status().value;
-        }
-    }
-
-    pub inline fn interface() std.Random {
-        return .{
-            .ptr = undefined,
-            .fillFn = fill,
-        };
-    }
-};
-
-pub const prng: *volatile Prng = @ptrFromInt(Memory.PRNG);
 
 pub const Dma = struct {
     pub const Mode = enum(u8) {
