@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const sdk = @import("mcu_sdk");
-const RESOLUTION = sdk.Vga.Resolution.lo;
+const RESOLUTION = sdk.Vga.Resolution.med;
 
 const Vga = sdk.utils.PciDevice(sdk.Vga, .vga);
 

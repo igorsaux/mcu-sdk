@@ -1050,13 +1050,15 @@ pub const Vga = extern struct {
     };
 
     pub const Resolution = enum(u8) {
-        lo = 0,
-        hi = 1,
+        low = 0,
+        med = 1,
+        hi = 2,
         _,
 
         pub inline fn width(this: Resolution) u16 {
             return switch (this) {
-                .lo => return 320,
+                .low => return 160,
+                .med => return 320,
                 .hi => return 640,
                 else => return 0,
             };
@@ -1064,7 +1066,8 @@ pub const Vga = extern struct {
 
         pub inline fn height(this: Resolution) u16 {
             return switch (this) {
-                .lo => return 240,
+                .low => return 120,
+                .med => return 240,
                 .hi => return 480,
                 else => return 0,
             };
@@ -1080,7 +1083,8 @@ pub const Vga = extern struct {
 
         pub inline fn fps(this: Resolution) u8 {
             return switch (this) {
-                .lo => return 24,
+                .low => return 30,
+                .med => return 24,
                 .hi => return 15,
                 else => return 0,
             };
@@ -1092,7 +1096,7 @@ pub const Vga = extern struct {
         keyboard_interrupts: KeyboardInterrupts = .{},
         mouse_interrupts: MouseInterrupts = .{},
         blitter: BlitterConfig = .{},
-        resolution: Resolution = .lo,
+        resolution: Resolution = .low,
     };
 
     pub const Event = extern struct {
