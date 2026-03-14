@@ -1090,7 +1090,7 @@ pub const Vga = extern struct {
             return this.len() * @sizeOf(Pixel);
         }
 
-        pub inline fn fps(this: Resolution) u8 {
+        pub inline fn maxFps(this: Resolution) u8 {
             return switch (this) {
                 .low => return 30,
                 .med => return 24,
@@ -1106,6 +1106,8 @@ pub const Vga = extern struct {
         mouse_interrupts: MouseInterrupts = .{},
         blitter: BlitterConfig = .{},
         resolution: Resolution = .low,
+        /// 0 - max FPS with the current resolution.
+        max_fps: u8 = 0,
     };
 
     pub const Event = extern struct {
@@ -1513,6 +1515,14 @@ pub const Vga = extern struct {
 
     pub inline fn setResolution(this: *volatile Vga, new_res: Resolution) void {
         this.config().resolution = new_res;
+    }
+
+    pub inline fn getMaxFps(this: *volatile Vga) u8 {
+        return this.config().max_fps;
+    }
+
+    pub inline fn setMaxFps(this: *volatile Vga, max_fps: u8) void {
+        this.config().max_fps = max_fps;
     }
 
     pub inline fn status(this: *volatile Vga) *volatile Status {
