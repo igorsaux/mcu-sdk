@@ -1031,13 +1031,21 @@ pub const Vga = extern struct {
             };
 
             pub const Copy = extern struct {
+                pub const Alpha = enum(u8) {
+                    ignore,
+                    mask,
+                    _,
+                };
+
                 /// Address of the source pixels.
                 src: u32,
                 w: u16 = 0,
                 h: u16 = 0,
                 src_pos: Position = .{},
                 dst_pos: Position = .{},
+                alpha: Alpha = .ignore,
                 mode: Mode = .crop,
+                mask: u8 = 0,
             };
 
             clear: Clear,
