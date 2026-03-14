@@ -414,6 +414,7 @@ pub const Pci = extern struct {
         light = 5,
         env_sensor = 6,
         vga = 7,
+        prize_box = 8,
         _,
     };
 
@@ -1582,5 +1583,78 @@ pub const Vga = extern struct {
             .args = .{ .copy = args },
         };
         this.executeBlitter();
+    }
+};
+
+pub const PrizeBox = extern struct {
+    pub const Interrupts = extern struct {
+        on_ready: bool = false,
+    };
+
+    pub const Config = extern struct {
+        interrupts: Interrupts = .{},
+    };
+
+    pub const Event = extern struct {
+        pub const Type = enum(u8) {
+            none = 0,
+            ready = 1,
+            _,
+        };
+
+        ty: Type = .none,
+    };
+
+    pub const Status = extern struct {
+        ready: bool = false,
+        empty: bool = true,
+        last_event: Event = .{},
+    };
+
+    pub const Action = extern struct {
+        ack: u8 = 0,
+        vend: u8 = 0,
+    };
+
+    _config: Config = .{},
+    _status: Status = .{},
+    _action: Action = .{},
+
+    pub inline fn config(this: *volatile PrizeBox) *volatile Config {
+        return &this._config;
+    }
+
+    pub inline fn interrupts(this: *volatile PrizeBox) *volatile Interrupts {
+        return &this.config().interrupts;
+    }
+
+    pub inline fn status(this: *volatile PrizeBox) *volatile Status {
+        return &this._status;
+    }
+
+    pub inline fn ready(this: *volatile PrizeBox) bool {
+        return this.status().ready;
+    }
+
+    pub inline fn empty(this: *volatile PrizeBox) bool {
+        return this.status().empty;
+    }
+
+    pub inline fn lastEvent(this: *volatile PrizeBox) ?Event {
+        const event = this.status().last_event;
+
+        return if (event.ty == .none) null else event;
+    }
+
+    pub inline fn action(this: *volatile PrizeBox) *volatile Action {
+        return &this._action;
+    }
+
+    pub inline fn ack(this: *volatile PrizeBox) void {
+        this.action().ack = 1;
+    }
+
+    pub inline fn vend(this: *volatile PrizeBox) void {
+        this.action().vend = 1;
     }
 };
