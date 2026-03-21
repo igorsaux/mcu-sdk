@@ -415,6 +415,7 @@ pub const Pci = extern struct {
         env_sensor = 6,
         vga = 7,
         prize_box = 8,
+        mining_block = 9,
         _,
     };
 
@@ -1674,5 +1675,70 @@ pub const PrizeBox = extern struct {
 
     pub inline fn vend(this: *volatile PrizeBox) void {
         this.action().vend = 1;
+    }
+};
+
+pub const MiningBlock = extern struct {
+    pub const Config = extern struct {
+        value: u32 = 0,
+    };
+
+    pub const Algorithm = enum(u8) {
+        none = 0,
+        proof_of_work = 1,
+        _,
+    };
+
+    pub const Args = extern union {
+        pub const PoWHash = enum(u8) {
+            fnv1a = 0,
+            murmur_hash3 = 1,
+            blake2s = 2,
+            xx_hash = 3,
+            sha256 = 4,
+            _,
+        };
+
+        none: void,
+        proof_of_work: extern struct {
+            hash: PoWHash,
+            seed: u32,
+            difficulty: u32,
+        },
+    };
+
+    pub const Status = extern struct {
+        is_last_value_ok: bool = false,
+        algorithm: Algorithm = .none,
+        args: Args = .{
+            .none = {},
+        },
+    };
+
+    pub const Action = extern struct {
+        send: u8 = 0,
+    };
+
+    _config: Config = .{},
+    _status: Status = .{},
+    _action: Action = .{},
+
+    pub inline fn config(this: *volatile MiningBlock) *volatile Config {
+        return &this._config;
+    }
+
+    pub inline fn status(this: *volatile MiningBlock) *volatile Status {
+        return &this._status;
+    }
+
+    pub inline fn action(this: *volatile MiningBlock) *volatile Action {
+        return &this._action;
+    }
+
+    pub inline fn send(this: *volatile MiningBlock, value: u32) bool {
+        this.config().value = value;
+        this.action().send = 1;
+
+        return this.status().is_last_value_ok;
     }
 };

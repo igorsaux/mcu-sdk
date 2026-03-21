@@ -38,6 +38,7 @@ pub fn build(b: *std.Build) void {
     addGuestExecutable(b, sdk, "examples/vga_demo", "vga_demo");
     addGuestExecutable(b, sdk, "examples/screensaver", "screensaver");
     addGuestExecutable(b, sdk, "examples/vga_input", "vga_input");
+    addGuestExecutable(b, sdk, "examples/mining", "mining");
 }
 
 const riscv32Query: std.Target.Query = .{
